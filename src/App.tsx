@@ -227,7 +227,7 @@ function App() {
             
             <div className="flex items-center space-x-3">
               <a
-                href="https://github.com"
+                href="https://github.com/Gabriel-Pasternak/Swagger2MCP.git"
                 target="_blank"
                 rel="noopener noreferrer"
                 className="flex items-center space-x-1 px-3 py-1.5 text-sm text-gray-600 hover:text-gray-900 rounded-md transition-colors duration-200"
