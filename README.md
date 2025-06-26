@@ -279,9 +279,6 @@ VITE_DEFAULT_AI_PROVIDER=openai
 VITE_DEFAULT_OPENAI_MODEL=gpt-4o
 ```
 
-## 📄 License
-
-This project is licensed under the MIT License - see the [LICENSE](LICENSE) file for details.
 
 ## 🙏 Acknowledgments
 
