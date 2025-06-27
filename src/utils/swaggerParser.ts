@@ -35,37 +35,56 @@ export class SwaggerParser {
   static generateMCPServer(spec: SwaggerSpec): MCPServer {
     const endpoints: MCPEndpoint[] = [];
     
-    Object.entries(spec.paths).forEach(([path, pathItem]) => {
-      Object.entries(pathItem).forEach(([method, operation]) => {
-        if (operation && typeof operation === 'object') {
-          const endpoint: MCPEndpoint = {
-            id: `${method}_${path}`.replace(/[^a-zA-Z0-9_]/g, '_'),
-            name: operation.operationId || `${method}_${path}`.replace(/[^a-zA-Z0-9_]/g, '_'),
-            method: method.toUpperCase(),
-            path,
-            description: operation.summary || operation.description || `${method.toUpperCase()} ${path}`,
-            parameters: this.extractParameters(operation.parameters || [], path),
-            requestBodySchema: operation.requestBody,
-            responseSchema: operation.responses
-          };
-          endpoints.push(endpoint);
-        }
+    try {
+      Object.entries(spec.paths).forEach(([path, pathItem]) => {
+        if (!pathItem || typeof pathItem !== 'object') return;
+        
+        Object.entries(pathItem).forEach(([method, operation]) => {
+          if (operation && typeof operation === 'object' && method && typeof method === 'string') {
+            // Sanitize the endpoint ID to ensure it's a valid identifier
+            const sanitizedPath = path.replace(/[^a-zA-Z0-9_]/g, '_');
+            const sanitizedMethod = method.replace(/[^a-zA-Z0-9_]/g, '_');
+            const endpointId = `${sanitizedMethod}_${sanitizedPath}`.replace(/_{2,}/g, '_');
+            
+            const endpoint: MCPEndpoint = {
+              id: endpointId,
+              name: operation.operationId?.replace(/[^a-zA-Z0-9_]/g, '_') || endpointId,
+              method: method.toUpperCase(),
+              path,
+              description: operation.summary || operation.description || `${method.toUpperCase()} ${path}`,
+              parameters: this.extractParameters(operation.parameters || [], path),
+              requestBodySchema: operation.requestBody,
+              responseSchema: operation.responses
+            };
+            endpoints.push(endpoint);
+          }
+        });
       });
-    });
 
-    const baseUrl = spec.servers?.[0]?.url || 'https://api.example.com';
+      if (endpoints.length === 0) {
+        throw new Error('No valid endpoints found in the Swagger specification');
+      }
 
-    const server: MCPServer = {
-      id: `mcp_${spec.info.title.replace(/[^a-zA-Z0-9_]/g, '_')}`,
-      name: spec.info.title,
-      description: spec.info.description || `MCP Server for ${spec.info.title}`,
-      baseUrl,
-      endpoints,
-      status: 'generating',
-      code: this.generateServerCode(spec, endpoints)
-    };
+      const baseUrl = spec.servers?.[0]?.url || 'https://api.example.com';
 
-    return server;
+      const server: MCPServer = {
+        id: `mcp_${spec.info.title.replace(/[^a-zA-Z0-9_]/g, '_')}`,
+        name: spec.info.title,
+        description: spec.info.description || `MCP Server for ${spec.info.title}`,
+        baseUrl,
+        endpoints,
+        status: 'generating',
+        code: {
+          typescript: this.generateTypescriptServerCode(spec, endpoints),
+          python: this.generatePythonServerCode(spec, endpoints)
+        }
+      };
+
+      return server;
+      
+    } catch (error) {
+      throw new Error(`Failed to generate MCP server: ${error instanceof Error ? error.message : 'Unknown error'}`);
+    }
   }
 
   private static extractParameters(params: any[], path: string): MCPParameter[] {
@@ -112,9 +131,17 @@ export class SwaggerParser {
     return 'string';
   }
 
-  private static generateServerCode(spec: SwaggerSpec, endpoints: MCPEndpoint[]): string {
+  private static generateTypescriptServerCode(spec: SwaggerSpec, endpoints: MCPEndpoint[]): string {
     const serverName = spec.info.title.replace(/[^a-zA-Z0-9_]/g, '_');
     const baseUrl = spec.servers?.[0]?.url || 'https://api.example.com';
+
+    // Filter out any endpoints that might have invalid data
+    const validEndpoints = endpoints.filter(endpoint => 
+      endpoint.method && 
+      typeof endpoint.method === 'string' && 
+      endpoint.id && 
+      endpoint.name
+    );
 
     return `#!/usr/bin/env node
 
@@ -146,14 +173,14 @@ const server = new Server(
 );
 
 // Tool definitions
-${endpoints.map(endpoint => this.generateToolDefinition(endpoint)).join('\n\n')}
+${validEndpoints.map(endpoint => this.generateTypescriptToolDefinition(endpoint)).join('\n\n')}
 
 // Tool handlers
 server.setRequestHandler(CallToolRequestSchema, async (request) => {
   const { name, arguments: args } = request.params;
   
   switch (name) {
-${endpoints.map(endpoint => this.generateToolHandler(endpoint)).join('\n')}
+${validEndpoints.map(endpoint => this.generateTypescriptToolHandler(endpoint)).join('\n')}
     default:
       throw new Error(\`Unknown tool: \${name}\`);
   }
@@ -162,12 +189,12 @@ ${endpoints.map(endpoint => this.generateToolHandler(endpoint)).join('\n')}
 server.setRequestHandler(ListToolsRequestSchema, async () => {
   return {
     tools: [
-${endpoints.map(endpoint => this.generateToolListEntry(endpoint)).join(',\n')}
+${validEndpoints.map(endpoint => this.generateTypescriptToolListEntry(endpoint)).join(',\n')}
     ],
   };
 });
 
-${endpoints.map(endpoint => this.generateEndpointHandler(endpoint, baseUrl)).join('\n\n')}
+${validEndpoints.map(endpoint => this.generateTypescriptEndpointHandler(endpoint, baseUrl)).join('\n\n')}
 
 async function main() {
   const transport = new StdioServerTransport();
@@ -182,7 +209,66 @@ main().catch((error) => {
 `;
   }
 
-  private static generateToolDefinition(endpoint: MCPEndpoint): string {
+  private static generatePythonServerCode(spec: SwaggerSpec, endpoints: MCPEndpoint[]): string {
+    const serverName = spec.info.title.replace(/[^a-zA-Z0-9_]/g, '_');
+    const baseUrl = spec.servers?.[0]?.url || 'https://api.example.com';
+
+    // Filter out any endpoints that might have invalid data
+    const validEndpoints = endpoints.filter(endpoint => 
+      endpoint.method && 
+      typeof endpoint.method === 'string' && 
+      endpoint.id && 
+      endpoint.name
+    );
+
+    return `#!/usr/bin/env python3
+
+"""
+MCP Server for ${spec.info.title}
+Generated from Swagger/OpenAPI specification
+
+${spec.info.description || ''}
+"""
+
+import json
+import asyncio
+from typing import Any
+import httpx
+from mcp.server.models import InitializationOptions
+import mcp.types as types
+from mcp.server import NotificationOptions, Server
+import mcp.server.stdio
+
+BASE_URL = "${baseUrl}"
+
+app = Server("${serverName}")
+
+${validEndpoints.map(endpoint => this.generatePythonToolDefinition(endpoint)).join('\n\n')}
+
+${validEndpoints.map(endpoint => this.generatePythonEndpointHandler(endpoint, baseUrl)).join('\n\n')}
+
+async def main():
+    # Run the server using stdin/stdout streams
+    async with mcp.server.stdio.stdio_server() as (read_stream, write_stream):
+        await app.run(
+            read_stream,
+            write_stream,
+            InitializationOptions(
+                server_name="${serverName}",
+                server_version="${spec.info.version}",
+                capabilities=app.get_capabilities(
+                    notification_options=NotificationOptions(),
+                    experimental_capabilities={},
+                ),
+            ),
+        )
+
+if __name__ == "__main__":
+    asyncio.run(main())
+`;
+  }
+
+  private static generateTypescriptToolDefinition(endpoint: MCPEndpoint): string {
     const params = endpoint.parameters.map(param => 
       `    ${param.name}: {
       type: '${param.type}',
@@ -204,16 +290,40 @@ ${params}
 };`;
   }
 
-  private static generateToolHandler(endpoint: MCPEndpoint): string {
+  private static generatePythonToolDefinition(endpoint: MCPEndpoint): string {
+    const validParams = endpoint.parameters.filter(param => 
+      param.name && 
+      typeof param.name === 'string' && 
+      param.name.match(/^[a-zA-Z_][a-zA-Z0-9_]*$/) // Valid Python identifier
+    );
+    
+    const params = validParams.map(param => {
+      const paramType = param.type === 'integer' ? 'int' : param.type === 'number' ? 'float' : 'str';
+      const paramName = param.name.replace(/[^a-zA-Z0-9_]/g, '_'); // Sanitize parameter name
+      return `    ${paramName}: ${paramType}${param.required ? '' : ' = None'}`;
+    }).join(',\n');
+
+    const functionName = endpoint.name.replace(/[^a-zA-Z0-9_]/g, '_');
+
+    return `@app.call_tool()
+async def ${functionName}(
+${params || '    # No parameters'}
+) -> list[types.TextContent] | types.ErrorData:
+    """${endpoint.description}"""
+    args = {k: v for k, v in locals().items() if v is not None}
+    return await handle_${endpoint.id}(args)`;
+  }
+
+  private static generateTypescriptToolHandler(endpoint: MCPEndpoint): string {
     return `    case '${endpoint.name}':
       return await handle_${endpoint.id}(args);`;
   }
 
-  private static generateToolListEntry(endpoint: MCPEndpoint): string {
+  private static generateTypescriptToolListEntry(endpoint: MCPEndpoint): string {
     return `      ${endpoint.id}_tool`;
   }
 
-  private static generateEndpointHandler(endpoint: MCPEndpoint, baseUrl: string): string {
+  private static generateTypescriptEndpointHandler(endpoint: MCPEndpoint, baseUrl: string): string {
     const pathParams = endpoint.parameters.filter(p => p.in === 'path');
     const queryParams = endpoint.parameters.filter(p => p.in === 'query');
 
@@ -271,5 +381,62 @@ ${queryParams.map(param => `    if (args.${param.name} !== undefined) {
     };
   }
 }`;
+  }
+
+  private static generatePythonEndpointHandler(endpoint: MCPEndpoint, baseUrl: string): string {
+    const pathParams = endpoint.parameters.filter(p => p.in === 'path');
+    const queryParams = endpoint.parameters.filter(p => p.in === 'query');
+    
+    // Validate and normalize the HTTP method
+    const httpMethod = endpoint.method && typeof endpoint.method === 'string' 
+      ? endpoint.method.toLowerCase() 
+      : 'get';
+
+    return `
+async def handle_${endpoint.id}(args: dict) -> list[types.TextContent] | types.ErrorData:
+    """Handle ${endpoint.description}"""
+    try:
+        url = BASE_URL + "${endpoint.path}"
+        
+        # Replace path parameters
+${pathParams.map(param => `        url = url.replace("{${param.name}}", str(args.get("${param.name}", "")))`).join('\n')}
+        
+        # Prepare query parameters
+        params = {}
+${queryParams.map(param => `        if "${param.name}" in args:
+            params["${param.name}"] = args["${param.name}"]`).join('\n')}
+        
+        # Prepare headers
+        headers = {
+            "Content-Type": "application/json",
+            "User-Agent": "MCP-Server/1.0"
+        }
+        
+        # Make the request
+        ${endpoint.method !== 'GET' ? `
+        json_data = args.get("body") if "${endpoint.method}" != "GET" else None
+        async with httpx.AsyncClient() as client:
+            response = await client.${httpMethod}(
+                url, 
+                params=params, 
+                json=json_data, 
+                headers=headers
+            )` : `
+        async with httpx.AsyncClient() as client:
+            response = await client.${httpMethod}(url, params=params, headers=headers)`}
+        
+        result = {
+            "status": response.status_code,
+            "statusText": response.reason_phrase,
+            "data": response.json() if response.headers.get("content-type", "").startswith("application/json") else response.text
+        }
+        
+        return [types.TextContent(
+            type="text",
+            text=json.dumps(result, indent=2)
+        )]
+        
+    except Exception as error:
+        return types.ErrorData(error=f"Error calling ${endpoint.name}: {str(error)}")`;
   }
 }
