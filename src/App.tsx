@@ -15,15 +15,16 @@ function App() {
   const [showCodeViewer, setShowCodeViewer] = useState(false);
   const [sidebarOpen, setSidebarOpen] = useState(true);
   const [activeTab, setActiveTab] = useState<'instructions' | 'code' | 'download'>('instructions');
+  const [selectedLanguage, setSelectedLanguage] = useState<'typescript' | 'python'>('typescript');
 
   const handleDownload = () => {
     if (!server) return;
     
-    const zipBlob = MCPGenerator.generateZipFile(server);
+    const zipBlob = MCPGenerator.generateZipFile(server, selectedLanguage);
     const url = URL.createObjectURL(zipBlob);
     const a = document.createElement('a');
     a.href = url;
-    a.download = `${server.id}.txt`;
+    a.download = `${server.id}-${selectedLanguage}.txt`;
     document.body.appendChild(a);
     a.click();
     document.body.removeChild(a);
@@ -110,6 +111,34 @@ function App() {
               <p className="text-sm text-gray-600 mb-4">
                 View the generated MCP server code for your API. This code can be used to integrate with Claude and other AI assistants.
               </p>
+
+              {/* Language Selection */}
+              <div className="mb-4">
+                <label className="block text-sm font-medium text-gray-700 mb-2">Language</label>
+                <div className="flex space-x-2">
+                  <button
+                    onClick={() => setSelectedLanguage('typescript')}
+                    className={`px-3 py-2 text-xs font-medium rounded-md transition-colors ${
+                      selectedLanguage === 'typescript'
+                        ? 'bg-blue-600 text-white'
+                        : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
+                    }`}
+                  >
+                    TypeScript
+                  </button>
+                  <button
+                    onClick={() => setSelectedLanguage('python')}
+                    className={`px-3 py-2 text-xs font-medium rounded-md transition-colors ${
+                      selectedLanguage === 'python'
+                        ? 'bg-blue-600 text-white'
+                        : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
+                    }`}
+                  >
+                    Python
+                  </button>
+                </div>
+              </div>
+
               <button
                 onClick={() => setShowCodeViewer(true)}
                 className="w-full px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700 transition-colors duration-200 flex items-center justify-center space-x-2"
@@ -123,11 +152,11 @@ function App() {
               <h4 className="font-medium text-gray-900 mb-3">Code Preview</h4>
               <div className="bg-gray-900 rounded-md p-4 overflow-hidden">
                 <pre className="text-xs text-gray-300 overflow-x-auto">
-                  <code>{server?.code.slice(0, 500)}...</code>
+                  <code>{server?.code[selectedLanguage]?.slice(0, 500)}...</code>
                 </pre>
               </div>
               <p className="text-xs text-gray-500 mt-2">
-                This is a preview of your generated MCP server code. Click "View Full Code" to see the complete implementation.
+                This is a preview of your generated {selectedLanguage} MCP server code. Click "View Full Code" to see the complete implementation.
               </p>
             </div>
           </div>
@@ -143,19 +172,46 @@ function App() {
               </p>
             </div>
 
+            {/* Language Selection for Download */}
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-2">Select Language</label>
+              <div className="flex space-x-2 mb-4">
+                <button
+                  onClick={() => setSelectedLanguage('typescript')}
+                  className={`flex-1 px-3 py-2 text-sm font-medium rounded-md transition-colors ${
+                    selectedLanguage === 'typescript'
+                      ? 'bg-blue-600 text-white'
+                      : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
+                  }`}
+                >
+                  TypeScript
+                </button>
+                <button
+                  onClick={() => setSelectedLanguage('python')}
+                  className={`flex-1 px-3 py-2 text-sm font-medium rounded-md transition-colors ${
+                    selectedLanguage === 'python'
+                      ? 'bg-blue-600 text-white'
+                      : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
+                  }`}
+                >
+                  Python
+                </button>
+              </div>
+            </div>
+
             <div className="space-y-3">
               <button
                 onClick={handleDownload}
                 className="w-full px-4 py-3 bg-green-600 text-white rounded-md hover:bg-green-700 transition-colors duration-200 flex items-center justify-center space-x-2"
               >
                 <Download className="w-4 h-4" />
-                <span>Download MCP Server</span>
+                <span>Download {selectedLanguage} MCP Server</span>
               </button>
               
               <div className="text-xs text-gray-500">
                 Downloads a text file containing:
                 <ul className="list-disc list-inside mt-1 space-y-1">
-                  <li>package.json configuration</li>
+                  <li>package.json / requirements.txt configuration</li>
                   <li>Complete server implementation</li>
                   <li>README.md with usage instructions</li>
                 </ul>
@@ -166,12 +222,21 @@ function App() {
               <h4 className="font-medium text-gray-900 mb-3">Integration Guide</h4>
               <div className="space-y-3 text-sm text-gray-600">
                 <p>After downloading:</p>
-                <ol className="list-decimal list-inside space-y-2">
-                  <li>Extract the contents to your project directory</li>
-                  <li>Run <code className="bg-gray-100 px-1 rounded">npm install</code> to install dependencies</li>
-                  <li>Configure your API base URL in the server code</li>
-                  <li>Run <code className="bg-gray-100 px-1 rounded">npm start</code> to start the MCP server</li>
-                </ol>
+                {selectedLanguage === 'typescript' ? (
+                  <ol className="list-decimal list-inside space-y-2">
+                    <li>Extract the contents to your project directory</li>
+                    <li>Run <code className="bg-gray-100 px-1 rounded">npm install</code> to install dependencies</li>
+                    <li>Configure your API base URL in the server code</li>
+                    <li>Run <code className="bg-gray-100 px-1 rounded">npm start</code> to start the MCP server</li>
+                  </ol>
+                ) : (
+                  <ol className="list-decimal list-inside space-y-2">
+                    <li>Extract the contents to your project directory</li>
+                    <li>Run <code className="bg-gray-100 px-1 rounded">pip install -r requirements.txt</code> to install dependencies</li>
+                    <li>Configure your API base URL in the server code</li>
+                    <li>Run <code className="bg-gray-100 px-1 rounded">python main.py</code> to start the MCP server</li>
+                  </ol>
+                )}
               </div>
             </div>
 
@@ -227,7 +292,7 @@ function App() {
             
             <div className="flex items-center space-x-3">
               <a
-                href="https://github.com/Gabriel-Pasternak/Swagger2MCP.git"
+                href="https://github.com"
                 target="_blank"
                 rel="noopener noreferrer"
                 className="flex items-center space-x-1 px-3 py-1.5 text-sm text-gray-600 hover:text-gray-900 rounded-md transition-colors duration-200"
@@ -246,50 +311,108 @@ function App() {
         {!server ? (
           /* Upload Section */
           <div className="flex-1 overflow-y-auto">
-            <div className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 py-12">
-              <div className="text-center mb-12">
-                <h2 className="text-3xl font-bold text-gray-900 mb-4">
-                  Transform Your APIs into AI Chat Assistants
-                </h2>
-                <p className="text-lg text-gray-600 mb-8 max-w-2xl mx-auto">
-                  Upload your Swagger/OpenAPI specification and create an intelligent chat assistant 
-                  that can execute real API calls and help users interact with your endpoints naturally.
-                </p>
-                
-                <div className="flex justify-center space-x-8 mb-8">
-                  <div className="flex items-center space-x-2 text-gray-600">
-                    <Database className="w-5 h-5 text-blue-600" />
-                    <span className="text-sm">Parse Swagger Files</span>
+            <div className="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8 py-12">
+              <div className="grid grid-cols-1 lg:grid-cols-2 gap-12 items-center">
+                {/* Left Column - Content */}
+                <div className="order-2 lg:order-1">
+                  <div className="text-center lg:text-left mb-8">
+                    <h2 className="text-3xl font-bold text-gray-900 mb-4">
+                      Transform Your APIs into AI Chat Assistants
+                    </h2>
+                    <p className="text-lg text-gray-600 mb-8">
+                      Upload your Swagger/OpenAPI specification and create an intelligent chat assistant 
+                      that can execute real API calls and help users interact with your endpoints naturally.
+                    </p>
+                    
+                    <div className="flex justify-center lg:justify-start flex-wrap gap-8 mb-8">
+                      <div className="flex items-center space-x-2 text-gray-600">
+                        <Database className="w-5 h-5 text-blue-600" />
+                        <span className="text-sm">Parse Swagger Files</span>
+                      </div>
+                      <div className="flex items-center space-x-2 text-gray-600">
+                        <Code className="w-5 h-5 text-purple-600" />
+                        <span className="text-sm">Generate MCP Servers</span>
+                      </div>
+                      <div className="flex items-center space-x-2 text-gray-600">
+                        <MessageCircle className="w-5 h-5 text-green-600" />
+                        <span className="text-sm">Execute API Calls</span>
+                      </div>
+                    </div>
                   </div>
-                  <div className="flex items-center space-x-2 text-gray-600">
-                    <Code className="w-5 h-5 text-purple-600" />
-                    <span className="text-sm">Generate MCP Servers</span>
-                  </div>
-                  <div className="flex items-center space-x-2 text-gray-600">
-                    <MessageCircle className="w-5 h-5 text-green-600" />
-                    <span className="text-sm">Execute API Calls</span>
+
+                  <FileUpload
+                    onFileSelect={processSwaggerFile}
+                    isLoading={isLoading}
+                    error={error}
+                    success={!!server}
+                  />
+                  
+                  {error && (
+                    <div className="mt-6 max-w-md mx-auto lg:mx-0 p-4 bg-red-50 border border-red-200 rounded-lg">
+                      <p className="text-red-800 text-sm">{error}</p>
+                      <button
+                        onClick={resetServer}
+                        className="mt-2 text-red-600 hover:text-red-800 text-sm underline"
+                      >
+                        Try again
+                      </button>
+                    </div>
+                  )}
+                </div>
+
+                {/* Right Column - Architecture Image */}
+                <div className="order-1 lg:order-2">
+                  <div className="bg-gradient-to-br from-blue-50 to-indigo-100 rounded-2xl p-8 shadow-lg">
+                    <div className="text-center mb-6">
+                      <h3 className="text-xl font-semibold text-gray-900 mb-2">MCP Architecture</h3>
+                      <p className="text-gray-600 text-sm">How your APIs connect to AI assistants</p>
+                    </div>
+                    
+                    <div className="bg-white rounded-xl p-6 shadow-sm">
+                      <img 
+                        src="/mcp-architecture.png" 
+                        alt="MCP Architecture Diagram showing how Swagger APIs connect to AI assistants through MCP servers"
+                        className="w-full h-auto rounded-lg"
+                        onError={(e) => {
+                          // Fallback if image doesn't load
+                          const target = e.currentTarget as HTMLImageElement;
+                          target.style.display = 'none';
+                          const fallback = target.nextElementSibling as HTMLElement;
+                          if (fallback) {
+                            fallback.classList.remove('hidden');
+                          }
+                        }}
+                      />
+                      
+                      {/* Fallback content if image fails to load */}
+                      <div className="hidden text-center py-12">
+                        <div className="w-20 h-40 bg-gradient-to-br from-blue-500 to-purple-600 rounded-full flex items-center justify-center mx-auto mb-6">
+                          <Zap className="w-10 h-10 text-white" />
+                        </div>
+                        <h4 className="text-lg font-semibold text-gray-900 mb-2">MCP Architecture</h4>
+                        <p className="text-gray-600 text-sm mb-4">
+                          Your Swagger API connects to AI assistants through MCP servers
+                        </p>
+                        <div className="bg-gray-50 rounded-lg p-4">
+                          <div className="flex items-center justify-between text-sm">
+                            <span className="px-2 py-1 bg-blue-100 text-blue-800 rounded">Swagger API</span>
+                            <span className="text-gray-400">→</span>
+                            <span className="px-2 py-1 bg-purple-100 text-purple-800 rounded">MCP Server</span>
+                            <span className="text-gray-400">→</span>
+                            <span className="px-2 py-1 bg-green-100 text-green-800 rounded">AI Assistant</span>
+                          </div>
+                        </div>
+                      </div>
+                    </div>
+                    
+                    <div className="mt-6 text-center">
+                      <p className="text-xs text-gray-500">
+                        Model Context Protocol enables seamless API integration with AI assistants
+                      </p>
+                    </div>
                   </div>
                 </div>
               </div>
-
-              <FileUpload
-                onFileSelect={processSwaggerFile}
-                isLoading={isLoading}
-                error={error}
-                success={!!server}
-              />
-              
-              {error && (
-                <div className="mt-6 max-w-md mx-auto p-4 bg-red-50 border border-red-200 rounded-lg">
-                  <p className="text-red-800 text-sm">{error}</p>
-                  <button
-                    onClick={resetServer}
-                    className="mt-2 text-red-600 hover:text-red-800 text-sm underline"
-                  >
-                    Try again
-                  </button>
-                </div>
-              )}
             </div>
           </div>
         ) : (
@@ -372,9 +495,9 @@ function App() {
       {/* Code Viewer Modal */}
       {showCodeViewer && server && (
         <CodeViewer
-          code={server.code}
-          language="javascript"
-          title={`${server.name} - MCP Server Code`}
+          code={server.code[selectedLanguage] || server.code.typescript}
+          language={selectedLanguage === 'python' ? 'python' : 'typescript'}
+          title={`${server.name} - ${selectedLanguage} MCP Server Code`}
           onClose={() => setShowCodeViewer(false)}
           onDownload={handleDownload}
         />
