@@ -69,7 +69,10 @@ export interface MCPServer {
   baseUrl: string;
   endpoints: MCPEndpoint[];
   status: 'generating' | 'ready' | 'error';
-  code: string;
+  code: {
+    typescript: string;
+    python: string;
+  };
   authConfig?: AuthConfig;
 }
 
