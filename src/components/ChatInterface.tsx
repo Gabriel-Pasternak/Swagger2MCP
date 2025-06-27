@@ -181,47 +181,29 @@ export const ChatInterface: React.FC<ChatInterfaceProps> = ({
                 I can execute API calls and help you interact with your endpoints using natural language.
               </p>
               
-              {isConfigured ? (
-                <div className="grid grid-cols-1 gap-3 text-left max-w-md mx-auto">
-                  <div 
-                    className="p-4 border border-gray-200 rounded-xl hover:border-blue-300 hover:shadow-md cursor-pointer transition-all duration-200 bg-white" 
-                    onClick={() => onSendMessage("What endpoints are available?")}
-                  >
-                    <div className="font-medium text-gray-900 text-sm mb-1">🔍 Explore endpoints</div>
-                    <div className="text-gray-600 text-xs">What endpoints are available?</div>
-                  </div>
-                  <div 
-                    className="p-4 border border-gray-200 rounded-xl hover:border-blue-300 hover:shadow-md cursor-pointer transition-all duration-200 bg-white" 
-                    onClick={() => onSendMessage("Get user with ID 1")}
-                  >
-                    <div className="font-medium text-gray-900 text-sm mb-1">⚡ Test an API call</div>
-                    <div className="text-gray-600 text-xs">Get user with ID 1</div>
-                  </div>
-                  <div 
-                    className="p-4 border border-gray-200 rounded-xl hover:border-blue-300 hover:shadow-md cursor-pointer transition-all duration-200 bg-white" 
-                    onClick={() => onSendMessage("How can you help me?")}
-                  >
-                    <div className="font-medium text-gray-900 text-sm mb-1">💡 Learn capabilities</div>
-                    <div className="text-gray-600 text-xs">How can you help me?</div>
-                  </div>
+              <div className="grid grid-cols-1 gap-3 text-left max-w-md mx-auto">
+                <div 
+                  className="p-4 border border-gray-200 rounded-xl hover:border-blue-300 hover:shadow-md cursor-pointer transition-all duration-200 bg-white" 
+                  onClick={() => onSendMessage("What endpoints are available?")}
+                >
+                  <div className="font-medium text-gray-900 text-sm mb-1">🔍 Explore endpoints</div>
+                  <div className="text-gray-600 text-xs">What endpoints are available?</div>
                 </div>
-              ) : (
-                <div className="bg-gradient-to-r from-amber-50 to-orange-50 border border-amber-200 rounded-xl p-6 max-w-md mx-auto shadow-sm">
-                  <div className="flex items-center space-x-2 text-amber-800 mb-3">
-                    <AlertCircle className="w-5 h-5" />
-                    <span className="font-semibold">Configuration Required</span>
-                  </div>
-                  <p className="text-amber-700 text-sm mb-4">
-                    Please configure your {requiredApiKey} in settings to start chatting with your API.
-                  </p>
-                  <button
-                    onClick={() => setShowSettings(true)}
-                    className="w-full px-4 py-3 bg-gradient-to-r from-amber-600 to-orange-600 text-white rounded-lg hover:from-amber-700 hover:to-orange-700 transition-colors text-sm font-medium shadow-md"
-                  >
-                    Configure Now
-                  </button>
+                <div 
+                  className="p-4 border border-gray-200 rounded-xl hover:border-blue-300 hover:shadow-md cursor-pointer transition-all duration-200 bg-white" 
+                  onClick={() => onSendMessage("Get user with ID 1")}
+                >
+                  <div className="font-medium text-gray-900 text-sm mb-1">⚡ Test an API call</div>
+                  <div className="text-gray-600 text-xs">Get user with ID 1</div>
                 </div>
-              )}
+                <div 
+                  className="p-4 border border-gray-200 rounded-xl hover:border-blue-300 hover:shadow-md cursor-pointer transition-all duration-200 bg-white" 
+                  onClick={() => onSendMessage("How can you help me?")}
+                >
+                  <div className="font-medium text-gray-900 text-sm mb-1">💡 Learn capabilities</div>
+                  <div className="text-gray-600 text-xs">How can you help me?</div>
+                </div>
+              </div>
             </div>
           </div>
         ) : (
@@ -313,10 +295,10 @@ export const ChatInterface: React.FC<ChatInterfaceProps> = ({
 
       {/* Fixed Input Area - Always accessible with consistent height */}
       <div className="flex-shrink-0 border-t border-gray-200 bg-white shadow-lg">
-        {/* Configuration status bar - Fixed height to prevent layout shifts */}
-        <div className="min-h-[60px] flex items-center justify-center px-4">
-          {!isConfigured ? (
-            <div className="w-full max-w-3xl mx-auto">
+        {/* Single Configuration status bar - Only show when not configured */}
+        {!isConfigured && (
+          <div className="px-4 py-3">
+            <div className="max-w-3xl mx-auto">
               <div className="flex items-center justify-between p-3 bg-gradient-to-r from-amber-50 to-orange-50 border border-amber-200 rounded-lg">
                 <div className="flex items-center space-x-2 text-amber-800">
                   <AlertCircle className="w-4 h-4" />
@@ -330,15 +312,8 @@ export const ChatInterface: React.FC<ChatInterfaceProps> = ({
                 </button>
               </div>
             </div>
-          ) : (
-            <div className="w-full max-w-3xl mx-auto">
-              <div className="flex items-center justify-center p-3 text-green-600 text-sm">
-                <CheckCircle className="w-4 h-4 mr-2" />
-                <span>Ready to chat with {serverName}</span>
-              </div>
-            </div>
-          )}
-        </div>
+          </div>
+        )}
         
         {/* Input form - Always visible */}
         <div className="px-4 pb-4">
